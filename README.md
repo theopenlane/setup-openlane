@@ -2,7 +2,7 @@
 
 ⚠️ **EXPERIMENTAL** - This action is experimental and subject to breaking changes. Use at your own risk.
 
-A GitHub Action to set up the Openlane client in your workflow.
+A GitHub Action to set up the Openlane client in your workflow to sync changes such as internal policies stored as markdown
 
 ## Usage
 
@@ -33,6 +33,6 @@ jobs:
             - uses: actions/checkout@v4
             - uses: theopenlane/setup-openlane@v1
                 with:
-                    version: 'v0.40.1'
+                    version: 'v0.38.0'
             - run: openlane --version
 ```
