@@ -1,6 +1,9 @@
 name: "Test setup-openlane Action"
 on:
-  - pull_request_target
+  push:
+    branches: [main]
+  pull_request_target:
+    branches: [main]
 jobs:
   test-action:
     runs-on: ubuntu-latest
@@ -12,4 +15,4 @@ jobs:
           version: '0.38.0'
           token:  "$OPENLANE_API_TOKEN"
           add_to_path: 'true'
-      - run: openlane --version
+      - run: openlane version
