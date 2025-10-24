@@ -1,0 +1,111 @@
+name: 'Setup Openlane CLI'
+description: 'Download and setup the openlane CLI for use in workflows'
+branding:
+  icon: 'download-cloud'
+  color: 'blue'
+
+inputs:
+  version:
+    description: 'Version of openlane CLI to install (e.g., "latest", "v1.2.3")'
+    required: false
+    default: 'latest'
+  token:
+    description: 'openlane API token (will be set as CORE_TOKEN env var)'
+    required: false
+  add_to_path:
+    description: 'Add CLI to PATH'
+    required: false
+    default: 'true'
+
+outputs:
+  version:
+    description: 'Installed version of openlane CLI'
+    value: ${{ steps.setup.outputs.version }}
+  cli_path:
+    description: 'Path to the openlane CLI executable'
+    value: ${{ steps.setup.outputs.cli_path }}
+    
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup openlane CLI
+      id: setup
+      shell: bash
+      env:
+        CORE_TOKEN: ${{ inputs.token }}
+      run: |
+        echo "Setting up openlane CLI..."
+
+        set -euo pipefail
+
+        CLI_PATH="/usr/local/bin/openlane"
+        VERSION="${{ inputs.version }}"
+
+        echo "Using binary installation method"
+
+        # Detect OS and architecture (normalized to release naming)
+        case "$(uname -s)" in
+          Linux)  OS="linux" ;;
+          Darwin) OS="darwin" ;;
+          *) echo "Unsupported OS: $(uname -s)"; exit 1 ;;
+        esac
+
+        case "$(uname -m)" in
+          x86_64|amd64) ARCH="amd64" ;;
+          aarch64|arm64) ARCH="arm64" ;;
+          *) echo "Unsupported arch: $(uname -m)"; exit 1 ;;
+        esac
+
+        DOWNLOAD_URL="https://github.com/theopenlane/core/releases/download/v${VERSION}/openlane_${VERSION}_${OS}_${ARCH}.tar.gz"
+        echo "Downloading from: $DOWNLOAD_URL"
+
+        TMP_DIR="$(mktemp -d)"
+        trap 'rm -rf "$TMP_DIR"' EXIT
+
+        curl -fsSL "$DOWNLOAD_URL" -o "$TMP_DIR/openlane.tgz"
+
+        echo "Extracting..."
+        tar -xzf "$TMP_DIR/openlane.tgz" -C "$TMP_DIR"
+
+        # Find the binary inside the archive (handles top-level or nested dir)
+        BIN_PATH="$(find "$TMP_DIR" -type f -name openlane -print -quit)"
+        if [ -z "${BIN_PATH:-}" ]; then
+          echo "Error: openlane binary not found in archive"
+          exit 1
+        fi
+
+        sudo mv "$BIN_PATH" "$CLI_PATH"
+        sudo chmod +x "$CLI_PATH"
+
+        # Quick format sanity-check (ELF on Linux, Mach-O on macOS)
+        if ! file "$CLI_PATH" | grep -E 'ELF 64-bit|Mach-O 64-bit' >/dev/null; then
+          echo "Unexpected binary format:"
+          file "$CLI_PATH"
+          exit 1
+        fi
+
+        # Get actual version by executing the binary; fall back to input version
+        if INSTALLED_VERSION="$("$CLI_PATH" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"; then
+          : # ok
+        else
+          INSTALLED_VERSION="$VERSION"
+          echo "Warning: Could not verify openlane CLI installation"
+        fi
+
+        echo "cli_path=$CLI_PATH" >> "$GITHUB_OUTPUT"
+        echo "version=$INSTALLED_VERSION" >> "$GITHUB_OUTPUT"
+        echo "✓ openlane CLI installed: $INSTALLED_VERSION"
+
+        # Verify it responds to a basic command
+        if "$CLI_PATH" version >/dev/null 2>&1; then
+          echo "✓ openlane CLI is ready"
+        else
+          echo "Warning: 'openlane version' failed; binary may be present but not runnable."
+        fi
+    - name: Set environment variables
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.token }}" ]; then
+          echo "CORE_TOKEN=${{ inputs.token }}" >> $GITHUB_ENV
+          echo "✓ CORE_TOKEN environment variable set"
+        fi
