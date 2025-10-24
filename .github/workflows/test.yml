@@ -1,11 +1,6 @@
 name: "Test setup-openlane Action"
 on:
   - pull_request_target
-  - push: 
-      branches:
-        - main
-  - workflow_dispatch: # manual trigger from any tag or branch
-
 jobs:
   test-action:
     runs-on: ubuntu-latest
