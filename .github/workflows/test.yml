@@ -9,7 +9,7 @@ jobs:
       - name: test setup-openlane action
         uses: ./
         with:
-          version: '0.40.2'
+          version: '0.38.0'
           token:  "$OPENLANE_API_TOKEN"
           add_to_path: 'true'
       - run: openlane --version
