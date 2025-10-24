@@ -34,5 +34,5 @@ jobs:
             - uses: theopenlane/setup-openlane@v1
                 with:
                     version: 'v0.38.0'
-            - run: openlane --version
+            - run: openlane version
 ```
